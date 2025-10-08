@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Voice AI Agent</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f2f5; color: #1c1e21; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background-color: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #1877f2; }
+        #chat-log { width: 500px; height: 300px; border: 1px solid #dddfe2; overflow-y: scroll; padding: 10px; margin-bottom: 1rem; text-align: left; background-color: #fff; }
+        .user-message { color: #1c1e21; text-align: right; margin: 5px; }
+        .ai-message { color: #0084ff; text-align: left; margin: 5px; }
+        button { background-color: #1877f2; color: white; border: none; padding: 10px 20px; border-radius: 5px; font-size: 16px; cursor: pointer; margin: 5px; }
+        button:disabled { background-color: #a0bdf5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Black Bull Fitness AI Agent</h1>
+        <div id="chat-log"></div>
+        <button id="start-btn">Start Call</button>
+        <button id="stop-btn" disabled>Stop Call</button>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>

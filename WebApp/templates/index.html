@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Live AI Voice Agent</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 600px; }
+        h1 { color: #333; }
+        #status-light { height: 20px; width: 20px; background-color: #e74c3c; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 10px; transition: background-color 0.3s; }
+        #status-text { vertical-align: middle; font-size: 1.2em; color: #555; }
+        .status-active { background-color: #2ecc71 !important; }
+        button { background-color: #3498db; color: white; border: none; padding: 15px 30px; font-size: 16px; border-radius: 8px; cursor: pointer; transition: background-color 0.3s; margin: 10px; }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        .transcript-box { margin-top: 20px; padding: 15px; background: #ecf0f1; border-radius: 8px; text-align: left; min-height: 50px; }
+        .transcript-box p { margin: 5px 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Fitness First AI Agent</h1>
+    <div>
+        <span id="status-light"></span>
+        <span id="status-text">Inactive</span>
+    </div>
+    <div style="margin-top: 20px;">
+        <button id="startButton">Start Conversation</button>
+        <button id="stopButton" disabled>End Conversation</button>
+    </div>
+    <div class="transcript-box">
+        <p><strong>You:</strong> <span id="user-transcript"></span></p>
+        <p><strong>Agent:</strong> <span id="agent-response"></span></p>
+    </div>
+</div>
+
+<script>
+    const startButton = document.getElementById('startButton');
+    const stopButton = document.getElementById('stopButton');
+    const statusLight = document.getElementById('status-light');
+    const statusText = document.getElementById('status-text');
+    const userTranscript = document.getElementById('user-transcript');
+    const agentResponse = document.getElementById('agent-response');
+
+    let ws;
+    let audioContext;
+    let stream;
+    let workletNode;
+
+    startButton.onclick = () => {
+        startButton.disabled = true;
+        stopButton.disabled = false;
+        statusLight.classList.add('status-active');
+        statusText.textContent = "Connecting...";
+        userTranscript.textContent = "";
+        agentResponse.textContent = "";
+
+        ws = new WebSocket(`ws://${location.host}/ws`);
+
+        ws.onopen = () => {
+            statusText.textContent = "Listening...";
+            startMicrophone();
+        };
+
+        // --- THIS IS THE CORRECTED SECTION ---
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            
+            // Check the 'type' of the message and update the correct element
+            if (message.type === 'user_transcript') {
+                // The backend sends the full string, so we just set it
+                userTranscript.textContent = message.data;
+            } else if (message.type === 'ai_response') {
+                agentResponse.textContent = message.data;
+            } else if (message.type === 'ai_voice_start') {
+                // You can use this to add a visual indicator that the AI is speaking
+                console.log("AI voice playback has started on the server.");
+            }
+        };
+        // --- END OF CORRECTED SECTION ---
+
+        ws.onclose = () => stopConversation();
+        ws.onerror = (error) => {
+            console.error("WebSocket Error:", error);
+            stopConversation();
+        };
+    };
+
+    stopButton.onclick = () => stopConversation();
+
+    async function startMicrophone() {
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+            await audioContext.audioWorklet.addModule('/static/js/audio.js');
+
+            const source = audioContext.createMediaStreamSource(stream);
+            workletNode = new AudioWorkletNode(audioContext, 'audio-recorder-processor');
+
+            workletNode.port.onmessage = (event) => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(event.data.buffer);
+                }
+            };
+
+            source.connect(workletNode);
+            workletNode.connect(audioContext.destination);
+
+        } catch (err) {
+            console.error("Error starting microphone:", err);
+            statusText.textContent = "Mic Error";
+            stopConversation();
+        }
+    }
+    
+    function stopConversation() {
+        if (workletNode) {
+            workletNode.port.onmessage = null;
+            workletNode.disconnect();
+            workletNode = null;
+        }
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        if (audioContext && audioContext.state !== 'closed') {
+            audioContext.close();
+        }
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.close();
+        }
+        
+        startButton.disabled = false;
+        stopButton.disabled = true;
+        statusLight.classList.remove('status-active');
+        statusText.textContent = "Inactive";
+    }
+
+    // The playAudio function is no longer needed on the client,
+    // as playback happens on the server.
+    // We can leave it empty or remove it.
+    function playAudio(audioBuffer) {
+        // This function is now intentionally left blank.
+    }
+</script>
+
+</body>
+</html>
